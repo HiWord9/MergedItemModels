@@ -10,7 +10,6 @@ base {
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(java_version)
     withSourcesJar()
-    withJavadocJar()
 }
 
 repositories {
@@ -32,7 +31,7 @@ repositories {
     }
 }
 
-['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+['apiElements', 'runtimeElements', 'sourcesElements'].each { variant ->
     configurations."$variant".outgoing {
         capability("$group:${project.name}:$version")
         capability("$group:${base.archivesName.get()}:$version")
