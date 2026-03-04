@@ -4,7 +4,8 @@
   "package": "${mod_main_dir}.mixin",
   "compatibilityLevel": "JAVA_18",
   "client": [
-    "ClientItemInfoLoaderMixin"
+    "ClientItemInfoLoaderMixin",
+    "ItemModelsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
