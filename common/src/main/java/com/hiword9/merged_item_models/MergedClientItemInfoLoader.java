@@ -20,21 +20,13 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 import static net.minecraft.client.resources.model.ClientItemInfoLoader.LISTER;
 import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
 
 public class MergedClientItemInfoLoader {
-    private static final Map<DynamicOps<?>, MergingContext> OPS_TO_CONTEXT = new ConcurrentHashMap<>();
-
-    public static @Nullable MergingContext getContext(DynamicOps<?> ops) {
-        return OPS_TO_CONTEXT.get(ops);
-    }
-
     public static CompletableFuture<LoadedClientInfos> scheduleLoad(ResourceManager resourceManager, Executor executor) {
         var registryAccess = ClientRegistryLayer.createRegistryAccess().compositeAccess();
         return CompletableFuture.supplyAsync(() -> LISTER.listMatchingResourceStacks(resourceManager), executor)
@@ -46,12 +38,7 @@ public class MergedClientItemInfoLoader {
                                     executor
                             )
                     ));
-                    return Util.sequence(list)
-                            .thenApply(pendingLoads -> {
-                                OPS_TO_CONTEXT.clear();
-                                return pendingLoads;
-                            })
-                            .thenApply(MergedClientItemInfoLoader::getLoadedClientInfos);
+                    return Util.sequence(list).thenApply(MergedClientItemInfoLoader::getLoadedClientInfos);
                 });
     }
 
@@ -67,13 +54,7 @@ public class MergedClientItemInfoLoader {
 
         var context = new MergingContext(resources, modelId, lookupProvider);
 
-        OPS_TO_CONTEXT.put(dynamicOps, context);
-
-        var clientItem = getClientItem(dynamicOps, context);
-
-        OPS_TO_CONTEXT.remove(dynamicOps);
-
-        return new PendingLoad(modelId, clientItem);
+        return new PendingLoad(modelId, context.load(dynamicOps));
     }
 
     public static @Nullable ClientItem getClientItem(

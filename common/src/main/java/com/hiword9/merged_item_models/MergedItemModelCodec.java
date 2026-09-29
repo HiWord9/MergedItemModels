@@ -35,7 +35,7 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
         var vanillaDataResult = decodeVanilla(ops, input);
         var vanillaModel = vanillaDataResult.result().orElse(null);
 
-        var context = MergedClientItemInfoLoader.getContext(ops);
+        var context = MergingContext.current();
 
         var settings = decodeSettings(ops, input).result().orElse(null);
 
