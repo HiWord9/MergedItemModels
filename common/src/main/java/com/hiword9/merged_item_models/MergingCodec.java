@@ -37,7 +37,10 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         var result = decodeModel(ops, input);
 
         var context = MergingContext.current();
-        if (context == null || !context.isMerging()) return result;
+        if (context == null) return result;
+
+        result.ifSuccess(model -> SourcePacks.put(model, context.sourcePack()));
+        if (!context.isMerging()) return result;
 
         return result.map(model -> {
             Supplier<DataResult<ItemModel.Unbaked>> unmerged = () -> context.unmerged(() -> decodeModel(ops, input));

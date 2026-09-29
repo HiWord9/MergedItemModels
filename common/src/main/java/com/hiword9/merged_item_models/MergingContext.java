@@ -63,6 +63,10 @@ public class MergingContext {
         }
     }
 
+    public String sourcePack() {
+        return resources.get(currentLayer).sourcePackId();
+    }
+
     public boolean isMerging() {
         return merging && currentLayer > 0;
     }
