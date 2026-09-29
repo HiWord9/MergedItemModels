@@ -13,6 +13,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static com.hiword9.merged_item_models.MergedItemModels.MOD_ID;
@@ -33,16 +34,17 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
 
     @Override
     public <T> DataResult<ItemModel.Unbaked> decode(DynamicOps<T> ops, MapLike<T> input) {
-        DataResult<ItemModel.Unbaked> result = codec.decode(ops, input).map(model -> model);
+        var result = decodeModel(ops, input);
 
         var context = MergingContext.current();
-        if (context == null) return result;
+        if (context == null || !context.isMerging()) return result;
 
-        return result.map(
-                model -> shouldMerge(model, Settings.decode(ops, input), context)
-                        ? context.lowerModel().orElse(model)
-                        : model
-        );
+        return result.map(model -> {
+            Supplier<DataResult<ItemModel.Unbaked>> unmerged = () -> context.unmerged(() -> decodeModel(ops, input));
+            return shouldMerge(model, Settings.decode(ops, input), context, unmerged)
+                    ? context.lowerModel().orElse(model)
+                    : model;
+        });
     }
 
     @Override
@@ -56,13 +58,38 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         return "Merging[" + codec + "]";
     }
 
-    private boolean shouldMerge(ItemModel.Unbaked model, Settings settings, MergingContext context) {
-        return settings.merge().orElseGet(() -> isDefaultModel(model, context.itemId()));
+    private <T> DataResult<ItemModel.Unbaked> decodeModel(DynamicOps<T> ops, MapLike<T> input) {
+        return codec.decode(ops, input).map(model -> model);
+    }
+
+    private boolean shouldMerge(
+            ItemModel.Unbaked model,
+            Settings settings,
+            MergingContext context,
+            Supplier<DataResult<ItemModel.Unbaked>> unmerged
+    ) {
+        return settings.merge().orElseGet(
+                () -> isDefaultModel(model, context.itemId()) || isBaseDefinition(model, context, unmerged)
+        );
     }
 
     private boolean isDefaultModel(ItemModel.Unbaked model, Identifier itemId) {
         return model instanceof BlockModelWrapper.Unbaked wrapper
                 && DEFAULT_MODEL_PREFIXES.stream().anyMatch(prefix -> wrapper.model().equals(itemId.withPrefix(prefix)));
+    }
+
+    private boolean isBaseDefinition(
+            ItemModel.Unbaked model,
+            MergingContext context,
+            Supplier<DataResult<ItemModel.Unbaked>> unmerged
+    ) {
+        var base = context.baseModel().filter(baseModel -> baseModel.type() == model.type());
+        if (base.isEmpty()) return false;
+
+        // models inside may be merged already, so compare what the pack itself defines
+        return unmerged.get().result()
+                .filter(definition -> context.isSameDefinition(definition, base.get()))
+                .isPresent();
     }
 
     private record Settings(Optional<Boolean> merge) {

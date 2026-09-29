@@ -5,6 +5,7 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.renderer.item.ClientItem;
 import net.minecraft.client.renderer.item.ItemModel;
+import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
@@ -30,6 +32,7 @@ public class MergingContext {
     private final DynamicOps<JsonElement> ops;
     private final Map<Integer, Optional<ClientItem>> layers = new HashMap<>();
     private int currentLayer;
+    private boolean merging = true;
 
     public MergingContext(Identifier itemId, List<Resource> resources, RegistryAccess registryAccess) {
         this.itemId = itemId;
@@ -55,8 +58,36 @@ public class MergingContext {
         }
     }
 
+    public boolean isMerging() {
+        return merging && currentLayer > 0;
+    }
+
+    public <T> T unmerged(Supplier<T> action) {
+        var outerMerging = merging;
+        merging = false;
+        try {
+            return action.get();
+        } finally {
+            merging = outerMerging;
+        }
+    }
+
     public Optional<ItemModel.Unbaked> lowerModel() {
         return layerFrom(currentLayer - 1).map(ClientItem::model);
+    }
+
+    // compared in encoded form, as some models hold runtime state and don't implement equals
+    public boolean isSameDefinition(ItemModel.Unbaked first, ItemModel.Unbaked second) {
+        var encoded = encode(first);
+        return encoded.isPresent() && encoded.equals(encode(second));
+    }
+
+    public Optional<ItemModel.Unbaked> baseModel() {
+        return IntStream.range(0, currentLayer)
+                .mapToObj(this::layer)
+                .flatMap(Optional::stream)
+                .findFirst()
+                .map(ClientItem::model);
     }
 
     private Optional<ClientItem> layerFrom(int index) {
@@ -98,6 +129,10 @@ public class MergingContext {
         } finally {
             currentLayer = outerLayer;
         }
+    }
+
+    private Optional<JsonElement> encode(ItemModel.Unbaked model) {
+        return ItemModels.CODEC.encodeStart(ops, model).result();
     }
 
     private ClientItem withRegistrySwapper(ClientItem clientItem) {
