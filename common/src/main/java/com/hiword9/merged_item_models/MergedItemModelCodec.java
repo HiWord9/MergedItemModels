@@ -41,6 +41,7 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
 
         if (
                 vanillaModel != null
+                && context != null
                 && shouldMerge(vanillaModel, context, settings)
         ) {
             var clientItem = MergedClientItemInfoLoader.getClientItem((DynamicOps<JsonElement>) ops, context);

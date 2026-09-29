@@ -31,7 +31,7 @@ import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
 public class MergedClientItemInfoLoader {
     private static final Map<DynamicOps<?>, MergingContext> OPS_TO_CONTEXT = new ConcurrentHashMap<>();
 
-    public static MergingContext getContext(DynamicOps<?> ops) {
+    public static @Nullable MergingContext getContext(DynamicOps<?> ops) {
         return OPS_TO_CONTEXT.get(ops);
     }
 
