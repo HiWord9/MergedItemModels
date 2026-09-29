@@ -1,7 +1,12 @@
 package com.hiword9.merged_item_models;
 
 import com.google.gson.JsonElement;
-import com.mojang.serialization.*;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.MapLike;
+import com.mojang.serialization.RecordBuilder;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.renderer.item.BlockModelWrapper;
 import net.minecraft.client.renderer.item.ItemModel;
@@ -10,7 +15,6 @@ import net.minecraft.resources.Identifier;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static com.hiword9.merged_item_models.MergedClientItemInfoLoader.*;
 import static com.hiword9.merged_item_models.MergedItemModels.MOD_ID;
 
 public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
@@ -39,11 +43,11 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
                 vanillaModel != null
                 && shouldMerge(vanillaModel, context, settings)
         ) {
-            var clientItem = getClientItem((DynamicOps<JsonElement>) ops, context);
+            var clientItem = MergedClientItemInfoLoader.getClientItem((DynamicOps<JsonElement>) ops, context);
             if (clientItem != null) return DataResult.success(clientItem.model());
         }
 
-        return (DataResult<ItemModel.Unbaked>) (Object) vanillaDataResult;
+        return vanillaDataResult.map(model -> model);
     }
 
     private <T> DataResult<BlockModelWrapper.Unbaked> decodeVanilla(DynamicOps<T> ops, MapLike<T> input) {

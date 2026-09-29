@@ -23,6 +23,5 @@ public class ClientItemInfoLoaderMixin {
             CallbackInfoReturnable<CompletableFuture<ClientItemInfoLoader.LoadedClientInfos>> cir
     ) {
         cir.setReturnValue(MergedClientItemInfoLoader.scheduleLoad(resourceManager, executor));
-        cir.cancel();
     }
 }

@@ -3,6 +3,7 @@ package com.hiword9.merged_item_models;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.PlaceholderLookupProvider;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
@@ -11,7 +12,7 @@ public class MergingContext {
     public final List<Resource> resources;
     public final Identifier identifier;
     public final PlaceholderLookupProvider lookupProvider;
-    protected int layer = 0;
+    private int layer = 0;
 
     public MergingContext(
             List<Resource> resources,
@@ -23,8 +24,8 @@ public class MergingContext {
         this.lookupProvider = lookupProvider;
     }
 
-    public Resource push() {
-        if (layer + 1 > resources.size()) return null;
+    public @Nullable Resource push() {
+        if (layer >= resources.size()) return null;
         layer++;
         return getCurrentResource();
     }

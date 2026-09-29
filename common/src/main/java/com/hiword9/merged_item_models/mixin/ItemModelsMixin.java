@@ -21,7 +21,7 @@ public class ItemModelsMixin {
 
     @Inject(
             method = "bootstrap",
-            at = @At(value = "RETURN")
+            at = @At("RETURN")
     )
     private static void onBootstrap(CallbackInfo ci) {
         ID_MAPPER.idToValue.forcePut(

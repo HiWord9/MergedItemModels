@@ -5,7 +5,8 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.multiplayer.ClientRegistryLayer;
 import net.minecraft.client.renderer.item.ClientItem;
-import net.minecraft.client.resources.model.ClientItemInfoLoader;
+import net.minecraft.client.resources.model.ClientItemInfoLoader.LoadedClientInfos;
+import net.minecraft.client.resources.model.ClientItemInfoLoader.PendingLoad;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
@@ -16,12 +17,16 @@ import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
 
 import java.io.Reader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
-import static net.minecraft.client.resources.model.ClientItemInfoLoader.*;
+import static net.minecraft.client.resources.model.ClientItemInfoLoader.LISTER;
+import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
 
 public class MergedClientItemInfoLoader {
     private static final Map<DynamicOps<?>, MergingContext> OPS_TO_CONTEXT = new ConcurrentHashMap<>();
@@ -30,25 +35,24 @@ public class MergedClientItemInfoLoader {
         return OPS_TO_CONTEXT.get(ops);
     }
 
-    public static CompletableFuture<ClientItemInfoLoader.LoadedClientInfos> scheduleLoad(ResourceManager resourceManager, Executor executor) {
+    public static CompletableFuture<LoadedClientInfos> scheduleLoad(ResourceManager resourceManager, Executor executor) {
         var registryAccess = ClientRegistryLayer.createRegistryAccess().compositeAccess();
         return CompletableFuture.supplyAsync(() -> LISTER.listMatchingResourceStacks(resourceManager), executor)
                 .thenCompose(idToResources -> {
-                            var list = new ArrayList<CompletableFuture<PendingLoad>>(idToResources.size());
-                            idToResources.forEach((identifier, resources) -> list.add(
-                                    CompletableFuture.supplyAsync(
-                                            () -> getPendingLoad(identifier, resources, registryAccess),
-                                            executor
-                                    )
-                            ));
-                            return Util.sequence(list)
-                                    .thenApply(f -> {
-                                        OPS_TO_CONTEXT.clear();
-                                        return f;
-                                    })
-                                    .thenApply(MergedClientItemInfoLoader::getLoadedClientInfos);
-                        }
-                );
+                    var list = new ArrayList<CompletableFuture<PendingLoad>>(idToResources.size());
+                    idToResources.forEach((file, resources) -> list.add(
+                            CompletableFuture.supplyAsync(
+                                    () -> getPendingLoad(file, resources, registryAccess),
+                                    executor
+                            )
+                    ));
+                    return Util.sequence(list)
+                            .thenApply(pendingLoads -> {
+                                OPS_TO_CONTEXT.clear();
+                                return pendingLoads;
+                            })
+                            .thenApply(MergedClientItemInfoLoader::getLoadedClientInfos);
+                });
     }
 
     private static PendingLoad getPendingLoad(
@@ -73,13 +77,13 @@ public class MergedClientItemInfoLoader {
     }
 
     public static @Nullable ClientItem getClientItem(
-          DynamicOps<JsonElement> dynamicOps,
-          MergingContext context
+            DynamicOps<JsonElement> dynamicOps,
+            MergingContext context
     ) {
         var resource = context.push();
         if (resource == null) return null;
 
-        var clientItem = getClientItem(
+        var clientItem = parseClientItem(
                 resource,
                 dynamicOps,
                 context.identifier,
@@ -90,15 +94,14 @@ public class MergedClientItemInfoLoader {
         return clientItem;
     }
 
-    private static @Nullable ClientItem getClientItem(
+    private static @Nullable ClientItem parseClientItem(
             Resource resource,
             DynamicOps<JsonElement> dynamicOps,
             Identifier identifier,
             PlaceholderLookupProvider lookupProvider
     ) {
-        ClientItem clientItem;
         try (Reader reader = resource.openAsReader()) {
-            clientItem = ClientItem.CODEC
+            return ClientItem.CODEC
                     .parse(dynamicOps, StrictJsonParser.parse(reader))
                     .ifError(
                             error -> LOGGER.error(
@@ -110,24 +113,23 @@ public class MergedClientItemInfoLoader {
                     )
                     .result()
                     .map(
-                            ci -> lookupProvider.hasRegisteredPlaceholders()
-                                    ? ci.withRegistrySwapper(lookupProvider.createSwapper())
-                                    : ci
+                            clientItem -> lookupProvider.hasRegisteredPlaceholders()
+                                    ? clientItem.withRegistrySwapper(lookupProvider.createSwapper())
+                                    : clientItem
                     )
                     .orElse(null);
         } catch (Exception exception) {
             LOGGER.error("Failed to open item model {} from pack '{}'", identifier, resource.sourcePackId(), exception);
             return null;
         }
-        return clientItem;
     }
 
-    private static LoadedClientInfos getLoadedClientInfos(List<PendingLoad> pendingLoadList) {
+    private static LoadedClientInfos getLoadedClientInfos(List<PendingLoad> pendingLoads) {
         var map = new HashMap<Identifier, ClientItem>();
 
-        for (PendingLoad pendingload : pendingLoadList) {
-            if (pendingload.clientItemInfo() != null) {
-                map.put(pendingload.id(), pendingload.clientItemInfo());
+        for (PendingLoad pendingLoad : pendingLoads) {
+            if (pendingLoad.clientItemInfo() != null) {
+                map.put(pendingLoad.id(), pendingLoad.clientItemInfo());
             }
         }
 
