@@ -3,5 +3,3 @@ accessWidener v1 named
 accessible field net/minecraft/client/resources/model/ClientItemInfoLoader LISTER Lnet/minecraft/resources/FileToIdConverter;
 accessible field net/minecraft/client/resources/model/ClientItemInfoLoader LOGGER Lorg/slf4j/Logger;
 accessible class net/minecraft/client/resources/model/ClientItemInfoLoader$PendingLoad
-
-accessible field net/minecraft/util/ExtraCodecs$LateBoundIdMapper idToValue Lcom/google/common/collect/BiMap;
