@@ -5,7 +5,9 @@ import com.mojang.serialization.*;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.renderer.item.BlockModelWrapper;
 import net.minecraft.client.renderer.item.ItemModel;
+import net.minecraft.resources.Identifier;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 import static com.hiword9.merged_item_models.MergedClientItemInfoLoader.*;
@@ -13,6 +15,8 @@ import static com.hiword9.merged_item_models.MergedItemModels.MOD_ID;
 
 public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
     public static final MapCodec<ItemModel.Unbaked> INSTANCE = new MergedItemModelCodec();
+
+    private static final List<String> DEFAULT_MODEL_PREFIXES = List.of("item/", "block/");
 
     private MergedItemModelCodec() {}
 
@@ -57,7 +61,11 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
 
     private boolean shouldMerge(BlockModelWrapper.Unbaked vanillaModel, MergingContext context, Settings settings) {
         if (settings != null && settings.merge != null) return settings.merge;
-        return vanillaModel.model().getPath().endsWith(context.identifier.getPath());
+        return isDefaultModel(vanillaModel.model(), context.identifier);
+    }
+
+    private boolean isDefaultModel(Identifier model, Identifier item) {
+        return DEFAULT_MODEL_PREFIXES.stream().anyMatch(prefix -> model.equals(item.withPrefix(prefix)));
     }
 
     public record Settings(Boolean merge) {
