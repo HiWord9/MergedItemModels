@@ -1,6 +1,5 @@
 package com.hiword9.merged_item_models;
 
-import com.google.gson.JsonElement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
@@ -30,7 +29,6 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T> DataResult<ItemModel.Unbaked> decode(DynamicOps<T> ops, MapLike<T> input) {
         var vanillaDataResult = decodeVanilla(ops, input);
         var vanillaModel = vanillaDataResult.result().orElse(null);
@@ -44,8 +42,8 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
                 && context != null
                 && shouldMerge(vanillaModel, context, settings)
         ) {
-            var clientItem = MergedClientItemInfoLoader.getClientItem((DynamicOps<JsonElement>) ops, context);
-            if (clientItem != null) return DataResult.success(clientItem.model());
+            var lowerModel = context.lowerModel();
+            if (lowerModel.isPresent()) return DataResult.success(lowerModel.get());
         }
 
         return vanillaDataResult.map(model -> model);
@@ -66,7 +64,7 @@ public class MergedItemModelCodec extends MapCodec<ItemModel.Unbaked> {
 
     private boolean shouldMerge(BlockModelWrapper.Unbaked vanillaModel, MergingContext context, Settings settings) {
         if (settings != null && settings.merge != null) return settings.merge;
-        return isDefaultModel(vanillaModel.model(), context.identifier);
+        return isDefaultModel(vanillaModel.model(), context.itemId());
     }
 
     private boolean isDefaultModel(Identifier model, Identifier item) {
