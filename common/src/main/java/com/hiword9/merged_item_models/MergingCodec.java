@@ -42,7 +42,7 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         return result.map(model -> {
             Supplier<DataResult<ItemModel.Unbaked>> unmerged = () -> context.unmerged(() -> decodeModel(ops, input));
             return shouldMerge(model, Settings.decode(ops, input), context, unmerged)
-                    ? context.lowerModel().orElse(model)
+                    ? context.mergeLowerModel().orElse(model)
                     : model;
         });
     }

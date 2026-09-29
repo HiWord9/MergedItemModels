@@ -1,6 +1,7 @@
 package com.hiword9.merged_item_models;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.renderer.item.ClientItem;
@@ -25,13 +26,17 @@ import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
 
 public class MergingContext {
     private static final ThreadLocal<MergingContext> CURRENT = new ThreadLocal<>();
+    private static final List<String> PROPERTY_KEYS = ClientItem.Properties.MAP_CODEC.keys(JsonOps.INSTANCE)
+            .map(JsonElement::getAsString)
+            .toList();
 
     private final Identifier itemId;
     private final List<Resource> resources;
     private final PlaceholderLookupProvider lookupProvider;
     private final DynamicOps<JsonElement> ops;
-    private final Map<Integer, Optional<ClientItem>> layers = new HashMap<>();
+    private final Map<Integer, Optional<Layer>> layers = new HashMap<>();
     private int currentLayer;
+    private boolean mergedLower;
     private boolean merging = true;
 
     public MergingContext(Identifier itemId, List<Resource> resources, RegistryAccess registryAccess) {
@@ -52,7 +57,7 @@ public class MergingContext {
     public Optional<ClientItem> load() {
         CURRENT.set(this);
         try {
-            return layerFrom(resources.size() - 1).map(this::withRegistrySwapper);
+            return layerFrom(resources.size() - 1).map(layer -> withRegistrySwapper(layer.clientItem()));
         } finally {
             CURRENT.remove();
         }
@@ -72,8 +77,10 @@ public class MergingContext {
         }
     }
 
-    public Optional<ItemModel.Unbaked> lowerModel() {
-        return layerFrom(currentLayer - 1).map(ClientItem::model);
+    public Optional<ItemModel.Unbaked> mergeLowerModel() {
+        var lower = layerFrom(currentLayer - 1);
+        if (lower.isPresent()) mergedLower = true;
+        return lower.map(layer -> layer.clientItem().model());
     }
 
     // compared in encoded form, as some models hold runtime state and don't implement equals
@@ -87,33 +94,36 @@ public class MergingContext {
                 .mapToObj(this::layer)
                 .flatMap(Optional::stream)
                 .findFirst()
-                .map(ClientItem::model);
+                .map(layer -> layer.clientItem().model());
     }
 
-    private Optional<ClientItem> layerFrom(int index) {
+    private Optional<Layer> layerFrom(int index) {
         return IntStream.iterate(index, i -> i >= 0, i -> i - 1)
                 .mapToObj(this::layer)
                 .flatMap(Optional::stream)
                 .findFirst();
     }
 
-    private Optional<ClientItem> layer(int index) {
+    private Optional<Layer> layer(int index) {
         // not computeIfAbsent: parsing a layer may parse the layers below it
-        var clientItem = layers.get(index);
-        if (clientItem == null) {
-            clientItem = parse(index);
-            layers.put(index, clientItem);
+        var layer = layers.get(index);
+        if (layer == null) {
+            layer = parse(index);
+            layers.put(index, layer);
         }
-        return clientItem;
+        return layer;
     }
 
-    private Optional<ClientItem> parse(int index) {
+    private Optional<Layer> parse(int index) {
         var resource = resources.get(index);
         var outerLayer = currentLayer;
+        var outerMergedLower = mergedLower;
         currentLayer = index;
+        mergedLower = false;
         try (Reader reader = resource.openAsReader()) {
+            var json = StrictJsonParser.parse(reader);
             return ClientItem.CODEC
-                    .parse(ops, StrictJsonParser.parse(reader))
+                    .parse(ops, json)
                     .ifError(
                             error -> LOGGER.error(
                                     "Couldn't parse item model '{}' from pack '{}': {}",
@@ -122,13 +132,32 @@ public class MergingContext {
                                     error.message()
                             )
                     )
-                    .result();
+                    .result()
+                    .map(clientItem -> createLayer(clientItem, json.getAsJsonObject()));
         } catch (Exception exception) {
             LOGGER.error("Failed to open item model {} from pack '{}'", itemId, resource.sourcePackId(), exception);
             return Optional.empty();
         } finally {
             currentLayer = outerLayer;
+            mergedLower = outerMergedLower;
         }
+    }
+
+    // properties are read from json, as decoded ones can't tell an omitted field from a default value
+    private Layer createLayer(ClientItem clientItem, JsonObject json) {
+        var properties = new JsonObject();
+        PROPERTY_KEYS.stream().filter(json::has).forEach(key -> properties.add(key, json.get(key)));
+        if (!mergedLower) return new Layer(clientItem, properties);
+
+        layerFrom(currentLayer - 1).ifPresent(lower -> lower.properties().entrySet().stream()
+                .filter(property -> !properties.has(property.getKey()))
+                .forEach(property -> properties.add(property.getKey(), property.getValue())));
+
+        var mergedProperties = ClientItem.Properties.MAP_CODEC.codec()
+                .parse(ops, properties)
+                .result()
+                .orElse(clientItem.properties());
+        return new Layer(new ClientItem(clientItem.model(), mergedProperties, clientItem.registrySwapper()), properties);
     }
 
     private Optional<JsonElement> encode(ItemModel.Unbaked model) {
@@ -140,4 +169,6 @@ public class MergingContext {
                 ? clientItem.withRegistrySwapper(lookupProvider.createSwapper())
                 : clientItem;
     }
+
+    private record Layer(ClientItem clientItem, JsonObject properties) {}
 }
