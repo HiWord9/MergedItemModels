@@ -39,8 +39,7 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         if (context == null) return result;
 
         return result.map(
-                model -> model instanceof BlockModelWrapper.Unbaked wrapper
-                        && shouldMerge(wrapper, Settings.decode(ops, input), context)
+                model -> shouldMerge(model, Settings.decode(ops, input), context)
                         ? context.lowerModel().orElse(model)
                         : model
         );
@@ -57,12 +56,13 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         return "Merging[" + codec + "]";
     }
 
-    private boolean shouldMerge(BlockModelWrapper.Unbaked model, Settings settings, MergingContext context) {
-        return settings.merge().orElseGet(() -> isDefaultModel(model.model(), context.itemId()));
+    private boolean shouldMerge(ItemModel.Unbaked model, Settings settings, MergingContext context) {
+        return settings.merge().orElseGet(() -> isDefaultModel(model, context.itemId()));
     }
 
-    private boolean isDefaultModel(Identifier model, Identifier item) {
-        return DEFAULT_MODEL_PREFIXES.stream().anyMatch(prefix -> model.equals(item.withPrefix(prefix)));
+    private boolean isDefaultModel(ItemModel.Unbaked model, Identifier itemId) {
+        return model instanceof BlockModelWrapper.Unbaked wrapper
+                && DEFAULT_MODEL_PREFIXES.stream().anyMatch(prefix -> wrapper.model().equals(itemId.withPrefix(prefix)));
     }
 
     private record Settings(Optional<Boolean> merge) {
