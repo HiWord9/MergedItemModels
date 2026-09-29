@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
 
@@ -48,15 +49,21 @@ public class MergingContext {
     public Optional<ClientItem> load() {
         CURRENT.set(this);
         try {
-            return layer(resources.size() - 1).map(this::withRegistrySwapper);
+            return layerFrom(resources.size() - 1).map(this::withRegistrySwapper);
         } finally {
             CURRENT.remove();
         }
     }
 
     public Optional<ItemModel.Unbaked> lowerModel() {
-        if (currentLayer == 0) return Optional.empty();
-        return layer(currentLayer - 1).map(ClientItem::model);
+        return layerFrom(currentLayer - 1).map(ClientItem::model);
+    }
+
+    private Optional<ClientItem> layerFrom(int index) {
+        return IntStream.iterate(index, i -> i >= 0, i -> i - 1)
+                .mapToObj(this::layer)
+                .flatMap(Optional::stream)
+                .findFirst();
     }
 
     private Optional<ClientItem> layer(int index) {
