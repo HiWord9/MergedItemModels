@@ -3,12 +3,13 @@ package com.hiword9.merged_item_models;
 import net.minecraft.client.multiplayer.ClientRegistryLayer;
 import net.minecraft.client.renderer.item.ClientItem;
 import net.minecraft.client.resources.model.ClientItemInfoLoader.LoadedClientInfos;
-import net.minecraft.client.resources.model.ClientItemInfoLoader.PendingLoad;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.Util;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,9 +17,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static net.minecraft.client.resources.model.ClientItemInfoLoader.LISTER;
-
 public class MergedClientItemInfoLoader {
+    private static final FileToIdConverter LISTER = FileToIdConverter.json("items");
+
     public static CompletableFuture<LoadedClientInfos> scheduleLoad(ResourceManager resourceManager, Executor executor) {
         var registryAccess = ClientRegistryLayer.createRegistryAccess().compositeAccess();
         return CompletableFuture.supplyAsync(() -> LISTER.listMatchingResourceStacks(resourceManager), executor)
@@ -48,11 +49,13 @@ public class MergedClientItemInfoLoader {
         var map = new HashMap<Identifier, ClientItem>();
 
         for (PendingLoad pendingLoad : pendingLoads) {
-            if (pendingLoad.clientItemInfo() != null) {
-                map.put(pendingLoad.id(), pendingLoad.clientItemInfo());
+            if (pendingLoad.clientItem() != null) {
+                map.put(pendingLoad.id(), pendingLoad.clientItem());
             }
         }
 
         return new LoadedClientInfos(map);
     }
+
+    private record PendingLoad(Identifier id, @Nullable ClientItem clientItem) {}
 }

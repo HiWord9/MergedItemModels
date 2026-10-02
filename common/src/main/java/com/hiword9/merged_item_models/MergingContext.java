@@ -2,6 +2,7 @@ package com.hiword9.merged_item_models;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.renderer.item.ClientItem;
@@ -13,6 +14,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.PlaceholderLookupProvider;
 import net.minecraft.util.StrictJsonParser;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.io.Reader;
 import java.util.HashMap;
@@ -22,9 +24,8 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
-import static net.minecraft.client.resources.model.ClientItemInfoLoader.LOGGER;
-
 public class MergingContext {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final ThreadLocal<MergingContext> CURRENT = new ThreadLocal<>();
     private static final List<String> PROPERTY_KEYS = ClientItem.Properties.MAP_CODEC.keys(JsonOps.INSTANCE)
             .map(JsonElement::getAsString)
