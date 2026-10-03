@@ -1,6 +1,5 @@
 package com.hiword9.merged_item_models;
 
-import net.minecraft.client.multiplayer.ClientRegistryLayer;
 import net.minecraft.client.renderer.item.ClientItem;
 import net.minecraft.client.resources.model.ClientItemInfoLoader.LoadedClientInfos;
 import net.minecraft.core.RegistryAccess;
@@ -12,6 +11,7 @@ import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -20,19 +20,20 @@ import java.util.concurrent.Executor;
 public class MergedClientItemInfoLoader {
     private static final FileToIdConverter LISTER = FileToIdConverter.json("items");
 
-    public static CompletableFuture<LoadedClientInfos> scheduleLoad(ResourceManager resourceManager, Executor executor) {
-        var registryAccess = ClientRegistryLayer.createRegistryAccess().compositeAccess();
-        return CompletableFuture.supplyAsync(() -> LISTER.listMatchingResourceStacks(resourceManager), executor)
-                .thenCompose(idToResources -> {
-                    var list = new ArrayList<CompletableFuture<PendingLoad>>(idToResources.size());
-                    idToResources.forEach((file, resources) -> list.add(
-                            CompletableFuture.supplyAsync(
-                                    () -> getPendingLoad(file, resources, registryAccess),
-                                    executor
-                            )
-                    ));
-                    return Util.sequence(list).thenApply(MergedClientItemInfoLoader::getLoadedClientInfos);
-                });
+    public static CompletableFuture<LoadedClientInfos> load(
+            Collection<Identifier> files,
+            ResourceManager resourceManager,
+            Executor executor,
+            RegistryAccess.Frozen registryAccess
+    ) {
+        var list = new ArrayList<CompletableFuture<PendingLoad>>(files.size());
+        files.forEach(file -> list.add(
+                CompletableFuture.supplyAsync(
+                        () -> getPendingLoad(file, resourceManager.getResourceStack(file), registryAccess),
+                        executor
+                )
+        ));
+        return Util.sequence(list).thenApply(MergedClientItemInfoLoader::getLoadedClientInfos);
     }
 
     private static PendingLoad getPendingLoad(
