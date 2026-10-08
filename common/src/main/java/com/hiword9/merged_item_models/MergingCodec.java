@@ -44,7 +44,7 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
 
         return result.map(model -> {
             Supplier<DataResult<ItemModel.Unbaked>> unmerged = () -> context.unmerged(() -> decodeModel(ops, input));
-            return shouldMerge(model, Settings.decode(ops, input), context, unmerged)
+            return shouldMerge(model, Properties.decode(ops, input), context, unmerged)
                     ? context.mergeLowerModel().orElse(model)
                     : model;
         });
@@ -67,11 +67,11 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
 
     private boolean shouldMerge(
             ItemModel.Unbaked model,
-            Settings settings,
+            Properties properties,
             MergingContext context,
             Supplier<DataResult<ItemModel.Unbaked>> unmerged
     ) {
-        return settings.merge().orElseGet(
+        return properties.merge().orElseGet(
                 () -> isDefaultModel(model, context.itemId()) || isBaseDefinition(model, context, unmerged)
         );
     }
@@ -95,19 +95,19 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
                 .isPresent();
     }
 
-    private record Settings(Optional<Boolean> merge) {
-        private static final Settings DEFAULT = new Settings(Optional.empty());
+    private record Properties(Optional<Boolean> merge) {
+        private static final Properties DEFAULT = new Properties(Optional.empty());
 
-        private static final MapCodec<Settings> CODEC = RecordCodecBuilder.mapCodec(
+        private static final MapCodec<Properties> CODEC = RecordCodecBuilder.mapCodec(
                 instance -> instance.group(
-                        Codec.BOOL.optionalFieldOf("merge").forGetter(Settings::merge)
-                ).apply(instance, Settings::new)
+                        Codec.BOOL.optionalFieldOf("merge").forGetter(Properties::merge)
+                ).apply(instance, Properties::new)
         );
 
-        private static final MapCodec<Settings> FIELD_CODEC
-                = CODEC.codec().optionalFieldOf("%s:settings".formatted(MOD_ID), DEFAULT);
+        private static final MapCodec<Properties> FIELD_CODEC
+                = CODEC.codec().optionalFieldOf("%s:properties".formatted(MOD_ID), DEFAULT);
 
-        private static <T> Settings decode(DynamicOps<T> ops, MapLike<T> input) {
+        private static <T> Properties decode(DynamicOps<T> ops, MapLike<T> input) {
             return FIELD_CODEC.decode(ops, input).result().orElse(DEFAULT);
         }
     }
