@@ -7,13 +7,21 @@
     "description": "${description}",
     "authors": [ "${mod_author}" ],
 
-    "license": "${license}",
+    "license": "${mod_license} ${mod_license_version}",
     "icon": "${mod_id}.png",
 
     "contact": {
         "homepage": "${mod_homepage}",
         "sources": "${mod_sources}",
         "issues": "${mod_issue_tracker}"
+    },
+
+    "custom": {
+        "modmenu": {
+            "links": {
+                "License": "${mod_license_link}/${mod_license_version}"
+            }
+        }
     },
 
     "environment": "client",

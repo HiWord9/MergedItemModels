@@ -45,13 +45,13 @@ repositories {
 
 sourcesJar {
     from(rootProject.file('LICENSE')) {
-        rename { "${it}_${mod_name}" }
+        rename { "${it}_${mod_id}" }
     }
 }
 
 jar {
     from(rootProject.file('LICENSE')) {
-        rename { "${it}_${mod_name}" }
+        rename { "${it}_${mod_id}" }
     }
 
     manifest {
@@ -77,7 +77,9 @@ processResources {
             'mod_name'                          : mod_name,
             'mod_author'                        : mod_author,
             'description'                       : project.description,
-            'license'                           : license,
+            'mod_license'                       : mod_license,
+            'mod_license_link'                  : mod_license_link,
+            'mod_license_version'               : mod_license_version,
             'mod_homepage'                      : mod_homepage,
             'mod_sources'                       : mod_sources,
             'mod_issue_tracker'                 : mod_issue_tracker,
