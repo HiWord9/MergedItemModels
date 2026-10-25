@@ -9,9 +9,7 @@ import com.mojang.serialization.RecordBuilder;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.renderer.item.BlockModelWrapper;
 import net.minecraft.client.renderer.item.ItemModel;
-import net.minecraft.resources.Identifier;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -19,8 +17,6 @@ import java.util.stream.Stream;
 import static com.hiword9.merged_item_models.MergedItemModels.MOD_ID;
 
 public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
-    private static final List<String> DEFAULT_MODEL_PREFIXES = List.of("item/", "block/");
-
     private final MapCodec<? extends ItemModel.Unbaked> codec;
 
     public MergingCodec(MapCodec<? extends ItemModel.Unbaked> codec) {
@@ -34,20 +30,10 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
 
     @Override
     public <T> DataResult<ItemModel.Unbaked> decode(DynamicOps<T> ops, MapLike<T> input) {
-        var result = decodeModel(ops, input);
-
         var context = MergingContext.current();
-        if (context == null) return result;
+        if (context == null) return decodeModel(ops, input);
 
-        result.ifSuccess(model -> SourcePacks.put(model, context.sourcePack()));
-        if (!context.isMerging()) return result;
-
-        return result.map(model -> {
-            Supplier<DataResult<ItemModel.Unbaked>> unmerged = () -> context.unmerged(() -> decodeModel(ops, input));
-            return shouldMerge(model, Properties.decode(ops, input), context, unmerged)
-                    ? context.mergeLowerModel().orElse(model)
-                    : model;
-        });
+        return context.trackShownDefaults(() -> decodeMerged(ops, input, context));
     }
 
     @Override
@@ -61,6 +47,19 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         return "Merging[" + codec + "]";
     }
 
+    private <T> DataResult<ItemModel.Unbaked> decodeMerged(DynamicOps<T> ops, MapLike<T> input, MergingContext context) {
+        var result = decodeModel(ops, input);
+        result.ifSuccess(model -> SourcePacks.put(model, context.sourcePack()));
+        if (!context.isMerging()) return result;
+
+        return result.map(model -> {
+            Supplier<DataResult<ItemModel.Unbaked>> unmerged = () -> context.unmerged(() -> decodeModel(ops, input));
+            return shouldMerge(model, Properties.decode(ops, input), context, unmerged)
+                    ? context.mergeLowerModel().orElse(model)
+                    : model;
+        });
+    }
+
     private <T> DataResult<ItemModel.Unbaked> decodeModel(DynamicOps<T> ops, MapLike<T> input) {
         return codec.decode(ops, input).map(model -> model);
     }
@@ -72,13 +71,15 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
             Supplier<DataResult<ItemModel.Unbaked>> unmerged
     ) {
         return properties.merge().orElseGet(
-                () -> isDefaultModel(model, context.itemId()) || isBaseDefinition(model, context, unmerged)
+                () -> isDefaultModel(model, context) || isBaseDefinition(model, context, unmerged)
         );
     }
 
-    private boolean isDefaultModel(ItemModel.Unbaked model, Identifier itemId) {
+    // a custom model with the default name is merged only if the pack below shows it too, so it isn't lost
+    private boolean isDefaultModel(ItemModel.Unbaked model, MergingContext context) {
         return model instanceof BlockModelWrapper.Unbaked wrapper
-                && DEFAULT_MODEL_PREFIXES.stream().anyMatch(prefix -> wrapper.model().equals(itemId.withPrefix(prefix)));
+                && context.isDefaultModel(wrapper.model())
+                && (context.lowerShowsDefaultModel(wrapper.model()) || context.isBaseModel(wrapper.model()));
     }
 
     private boolean isBaseDefinition(

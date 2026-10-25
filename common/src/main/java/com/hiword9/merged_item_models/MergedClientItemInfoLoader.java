@@ -5,7 +5,6 @@ import net.minecraft.client.resources.model.ClientItemInfoLoader.LoadedClientInf
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
@@ -29,7 +28,7 @@ public class MergedClientItemInfoLoader {
         var list = new ArrayList<CompletableFuture<PendingLoad>>(files.size());
         files.forEach(file -> list.add(
                 CompletableFuture.supplyAsync(
-                        () -> getPendingLoad(file, resourceManager.getResourceStack(file), registryAccess),
+                        () -> getPendingLoad(file, resourceManager, registryAccess),
                         executor
                 )
         ));
@@ -38,11 +37,12 @@ public class MergedClientItemInfoLoader {
 
     private static PendingLoad getPendingLoad(
             Identifier file,
-            List<Resource> resources,
+            ResourceManager resourceManager,
             RegistryAccess.Frozen registryAccess
     ) {
         var modelId = LISTER.fileToId(file);
-        var clientItem = new MergingContext(modelId, resources, registryAccess).load().orElse(null);
+        var resources = resourceManager.getResourceStack(file);
+        var clientItem = new MergingContext(modelId, resources, resourceManager, registryAccess).load().orElse(null);
         return new PendingLoad(modelId, clientItem);
     }
 
