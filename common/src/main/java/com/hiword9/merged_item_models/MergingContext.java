@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.PlaceholderLookupProvider;
@@ -71,8 +72,8 @@ public class MergingContext {
         }
     }
 
-    public String sourcePack() {
-        return resources.get(currentLayer).sourcePackId();
+    public PackLocationInfo sourcePack() {
+        return resources.get(currentLayer).source().location();
     }
 
     public boolean isMerging() {
