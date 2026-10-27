@@ -54,7 +54,15 @@ Optional<String> fromModel = MergedItemModelsApi.getSourcePack(model);     // It
 Optional<String> fromItem = MergedItemModelsApi.getSourcePack(clientItem); // ClientItem
 ```
 
-It is empty for models not loaded by the mod and for model instances shared between packs.
+`getSourcePackInfo` returns `PackLocationInfo`, with the pack's id, title, source and known pack info:
+
+```java
+Optional<PackLocationInfo> fromModel = MergedItemModelsApi.getSourcePackInfo(model);
+Optional<PackLocationInfo> fromItem = MergedItemModelsApi.getSourcePackInfo(clientItem);
+```
+
+Both methods return empty for models not loaded by the mod and for model instances shared between packs.
+For `ClientItem`, the source is that of the root model; merged models inside may come from other packs.
 
 ## Building
 
