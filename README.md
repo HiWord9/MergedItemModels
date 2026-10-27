@@ -74,6 +74,23 @@ Minecraft 1.21.11 on Fabric, NeoForge and Forge. Client-side only, no dependenci
 
 The jars are written to `fabric/build/libs`, `neoforge/build/libs` and `forge/build/libs`.
 
+## Maven
+
+For Fabric:
+
+```groovy
+repositories {
+    maven { url = "https://maven.miros.love/" }
+}
+
+dependencies {
+    modCompileOnly "com.hiword9.merged_item_models:mim-fabric-1.21.11:<version>"
+}
+```
+
+NeoForge and Forge artifacts are `mim-neoforge-1.21.11` and `mim-forge-1.21.11`.
+The `mim-common-1.21.11` artifact is available for shared code.
+
 ## License
 
 [Team Durt License 1.0](LICENSE)
