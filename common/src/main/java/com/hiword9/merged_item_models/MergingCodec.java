@@ -87,15 +87,14 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
             MergingContext context,
             Supplier<DataResult<ItemModel.Unbaked>> unmerged
     ) {
-        if (model instanceof BlockModelWrapper.Unbaked wrapper && !context.isBaseModel(wrapper.model())) return false;
-
         var base = context.baseModel().filter(baseModel -> baseModel.type() == model.type());
         if (base.isEmpty()) return false;
 
         // models inside may be merged already, so compare what the pack itself defines
         return unmerged.get().result()
                 .filter(definition -> context.isSameDefinition(definition, base.get()))
-                .isPresent();
+                .isPresent()
+                && (!(model instanceof BlockModelWrapper.Unbaked wrapper) || context.isBaseModel(wrapper.model()));
     }
 
     private record Properties(Optional<Boolean> merge) {
