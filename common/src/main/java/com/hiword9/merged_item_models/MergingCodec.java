@@ -87,6 +87,8 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
             MergingContext context,
             Supplier<DataResult<ItemModel.Unbaked>> unmerged
     ) {
+        if (model instanceof BlockModelWrapper.Unbaked wrapper && !context.isBaseModel(wrapper.model())) return false;
+
         var base = context.baseModel().filter(baseModel -> baseModel.type() == model.type());
         if (base.isEmpty()) return false;
 
