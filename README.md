@@ -66,17 +66,15 @@ For `ClientItem`, the source is that of the root model; merged models inside may
 
 ## Building
 
-Minecraft 1.21.11 on Fabric, NeoForge and Forge. Client-side only, no dependencies.
+Minecraft 26.1+ on Fabric and NeoForge. Client-side only, no dependencies. Java 25 is required to build.
 
 ```
 ./gradlew build
 ```
 
-The jars are written to `fabric/build/libs`, `neoforge/build/libs` and `forge/build/libs`.
+The same jar in `build/libs` works on both loaders. A sources jar is generated alongside it.
 
 ## Maven
-
-For Fabric:
 
 ```groovy
 repositories {
@@ -84,12 +82,11 @@ repositories {
 }
 
 dependencies {
-    modCompileOnly "com.hiword9.merged_item_models:mim-fabric-1.21.11:<version>"
+    compileOnly "com.hiword9.merged_item_models:mim-26.3:<version>"
 }
 ```
 
-NeoForge and Forge artifacts are `mim-neoforge-1.21.11` and `mim-forge-1.21.11`.
-The `mim-common-1.21.11` artifact is available for shared code.
+The artifact is shared by Fabric and NeoForge; sources are included in the repository.
 
 ## License
 

@@ -7,7 +7,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import net.minecraft.client.renderer.item.BlockModelWrapper;
+import net.minecraft.client.renderer.item.CuboidItemModelWrapper;
 import net.minecraft.client.renderer.item.ClientItem;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.client.renderer.item.ItemModels;
@@ -107,7 +107,7 @@ public class MergingContext {
         try {
             var result = decode.get();
             result.ifSuccess(model -> {
-                if (model instanceof BlockModelWrapper.Unbaked wrapper) showDefaults(defaultBit(wrapper.model()));
+                if (model instanceof CuboidItemModelWrapper.Unbaked wrapper) showDefaults(defaultBit(wrapper.model()));
             });
             return result;
         } finally {

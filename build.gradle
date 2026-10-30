@@ -1,8 +1,126 @@
 plugins {
-    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
-    id 'net.neoforged.moddev' version '2.0.123' apply false
+    id 'java-library'
+    id 'maven-publish'
+    id 'xyz.wagyourtail.unimined' version '1.4.2-SNAPSHOT'
 }
 
-subprojects {
-    tasks.withType(Javadoc).configureEach { enabled = false }
+base {
+    archivesName = "${mod_id}-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+    unimined.neoForgedMaven()
+    unimined.spongeMaven()
+}
+
+sourceSets {
+    neoforge
+}
+
+unimined.minecraft {
+    version minecraft_version
+
+    fabric {
+        loader fabric_loader_version
+    }
+
+    defaultRemapJar = false
+}
+
+unimined.minecraft(sourceSets.neoforge) {
+    combineWith(sourceSets.main)
+
+    neoForge {
+        loader "net.neoforged:neoforge:${neoforge_version}"
+    }
+
+    defaultRemapJar = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = Integer.valueOf(java_version)
+}
+
+tasks.withType(Javadoc).configureEach { enabled = false }
+
+tasks.withType(Jar).configureEach {
+    from('LICENSE') {
+        rename { "${it}_${mod_id}" }
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_name,
+                'Specification-Vendor'  : mod_author,
+                'Specification-Version' : project.version,
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor' : mod_author,
+                'Built-On-Minecraft'    : minecraft_version
+        ])
+    }
+}
+
+processResources {
+    var expandProps = [
+            'version'                         : project.version,
+            'minecraft_version'               : minecraft_version,
+            'mod_id'                          : mod_id,
+            'mod_name'                        : mod_name,
+            'mod_author'                      : mod_author,
+            'description'                     : project.description,
+            'mod_license'                     : mod_license,
+            'mod_license_link'                : mod_license_link,
+            'mod_license_version'             : mod_license_version,
+            'mod_homepage'                    : mod_homepage,
+            'mod_sources'                     : mod_sources,
+            'mod_issue_tracker'               : mod_issue_tracker,
+            'mod_main_dir'                    : mod_main_dir,
+            'fabric_minecraft_version_range'  : fabric_minecraft_version_range,
+            'fabric_loader_version'           : fabric_loader_version,
+            'neoforge_version'                : neoforge_version,
+            'neoforge_loader_version_range'   : neoforge_loader_version_range,
+            'neoforge_minecraft_version_range': neoforge_minecraft_version_range,
+            'java_version'                    : java_version
+    ]
+
+    var jsonExpandProps = expandProps.collectEntries {
+        key, value -> [(key): value instanceof String ? value.replace("\n", "\\\\n") : value]
+    }
+
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand expandProps
+    }
+
+    filesMatching(['pack.mcmeta', 'fabric.mod.json', '*.mixins.json']) {
+        expand jsonExpandProps
+    }
+
+    filesMatching('*.mixins.json') {
+        it.setName(it.name.replace('mod_id', mod_id))
+    }
+
+    inputs.properties(expandProps)
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifactId base.archivesName.get()
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url System.getenv('local_maven_url')
+        }
+    }
 }

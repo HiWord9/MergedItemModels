@@ -7,7 +7,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.MapLike;
 import com.mojang.serialization.RecordBuilder;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.client.renderer.item.BlockModelWrapper;
+import net.minecraft.client.renderer.item.CuboidItemModelWrapper;
 import net.minecraft.client.renderer.item.ItemModel;
 
 import java.util.Optional;
@@ -77,7 +77,7 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
 
     // a custom model with the default name is merged only if the pack below shows it too, so it isn't lost
     private boolean isDefaultModel(ItemModel.Unbaked model, MergingContext context) {
-        return model instanceof BlockModelWrapper.Unbaked wrapper
+        return model instanceof CuboidItemModelWrapper.Unbaked wrapper
                 && context.isDefaultModel(wrapper.model())
                 && (context.lowerShowsDefaultModel(wrapper.model()) || context.isBaseModel(wrapper.model()));
     }
@@ -94,7 +94,7 @@ public class MergingCodec extends MapCodec<ItemModel.Unbaked> {
         return unmerged.get().result()
                 .filter(definition -> context.isSameDefinition(definition, base.get()))
                 .isPresent()
-                && (!(model instanceof BlockModelWrapper.Unbaked wrapper) || context.isBaseModel(wrapper.model()));
+                && (!(model instanceof CuboidItemModelWrapper.Unbaked wrapper) || context.isBaseModel(wrapper.model()));
     }
 
     private record Properties(Optional<Boolean> merge) {
