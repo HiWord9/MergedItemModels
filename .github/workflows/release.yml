@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' \
+          find build/libs -maxdepth 1 -name '*.jar' \
             -exec gh release upload "$TAG" --clobber {} +
 
   publish-maven:
