@@ -48,13 +48,32 @@ unimined.minecraft(sourceSets.neoforge) {
 unimined.minecraft(sourceSets.forge) {
     combineWith(sourceSets.main)
 
+    // Work around Unimined's Forge dev classpath and module-name conflicts until fixed upstream.
+    def clientExtra
     minecraftForge {
         loader forge_version
         useUnionRelaunch = false
         mixinConfig "${mod_id}.mixins.json"
+        clientExtra = forgeTransformer.clientExtra
     }
 
     defaultRemapJar = false
+
+    def forgeDevResources = tasks.register('forgeDevResources', Jar) {
+        archiveFileName = "client-extra-${minecraft_version}.jar"
+        destinationDirectory = layout.buildDirectory.dir('forge-dev')
+        from({ zipTree(clientExtra.singleFile) }) {
+            exclude 'META-INF/MANIFEST.MF'
+        }
+    }
+
+    runs.preLaunch('client', tasks.named('jar'))
+    runs.preLaunch('client', forgeDevResources)
+
+    runs.config('client') {
+        classpath = files(tasks.named('jar').flatMap { it.archiveFile }, forgeDevResources.flatMap { it.archiveFile }) +
+                classpath.filter { !sourceSets.main.output.contains(it) && !sourceSets.forge.output.contains(it) && !clientExtra.contains(it) }
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
