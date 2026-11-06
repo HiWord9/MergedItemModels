@@ -82,9 +82,11 @@ repositories {
 }
 
 dependencies {
-    compileOnly "com.hiword9.merged_item_models:mim-26.3:<version>"
+    compileOnly "com.hiword9:mim:<version>"
 }
 ```
+
+`<version>` is the full release tag, e.g. `1.0.1+26.3`.
 
 The artifact is shared by Fabric, NeoForge and Forge; sources are included in the repository.
 
